@@ -27,7 +27,7 @@ double perSiteMutationRate=0.005;
 int update=0;
 size_t repeats=1;
 int maxAgent=100;
-int totalGenerations=400;
+int totalGenerations=200;
 
 void computeLOD(FILE *f,FILE *g, tAgent *agent,tGame *game);
 const char* cstr(string s) { return s.c_str(); }
@@ -56,6 +56,7 @@ int main(int argc, char *argv[]) {
 	addp(TYPE::STRING, &filenameGenome, "--genome", "filename to save genomes of the LODFile.");
 	addp(TYPE::FLOAT, &preselectPhiLimit, "-1.0", false, "--preselectPhi", "phi threshold for brain selection before evolution. Define to enable.");
 	addp(TYPE::FLOAT, &evolvePhiLimit, "-1.0", false, "--evolvePhi", "phi threshold for brain selection during evolution before switching to task fitness. Define to enable.");
+	addp(TYPE::INT, &totalGenerations, "200", false, "--generations", "number of generations to simulate (updates).");
 	argparse(argv);
 	if (showhelp) {
 		cout << argdetails() << endl;
