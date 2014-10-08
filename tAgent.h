@@ -55,8 +55,8 @@ public:
 	tAgent();
 	~tAgent();
 	void setupRandomAgent(int nucleotides);
-	void loadAgent(char* filename);
-	void loadAgentWithTrailer(char* filename);
+	void loadAgent(const char* filename);
+	void loadAgentWithTrailer(const char* filename);
 	void setupPhenotype(void);
 	void inherit(tAgent *from,double mutationRate,int theTime);
 	unsigned char * getStatesPointer(void);
@@ -65,9 +65,9 @@ public:
 	void ampUpStartCodons(void);
 	void showBrain(void);
 	void showPhenotype(void);
-	void saveToDot(char *filename);
-	void saveToDotFullLayout(char *filename);
-    void saveEdgeList(char *filename);
+	void saveToDot(const char *filename);
+	void saveToDotFullLayout(const char *filename);
+    void saveEdgeList(const char *filename);
 	
 	void initialize(int x, int y, int d);
 	tAgent* findLMRCA(void);

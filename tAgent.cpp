@@ -45,7 +45,7 @@ void tAgent::setupRandomAgent(int nucleotides){
 	ampUpStartCodons();
 	setupPhenotype();
 }
-void tAgent::loadAgent(char* filename){
+void tAgent::loadAgent(const char* filename){
 	FILE *f=fopen(filename,"r+t");
 	int i;
 	genome.clear();
@@ -55,7 +55,7 @@ void tAgent::loadAgent(char* filename){
 	}
 	setupPhenotype();
 }
-void tAgent::loadAgentWithTrailer(char* filename){
+void tAgent::loadAgentWithTrailer(const char* filename){
 	FILE *f=fopen(filename,"r+t");
 	int i;
 	genome.clear();
@@ -82,7 +82,7 @@ void tAgent::ampUpStartCodons(void){
 	}
 }
 
-void tAgent::inherit(tAgent *from,double mutationRate,int theTime){
+void tAgent::inherit(tAgent *from,double mutationRate,int theTime){ // large mutation rate to spread the genotypic population
 	int nucleotides=from->genome.size();
 	int i,s,o,w;
 	//double localMutationRate=4.0/from->genome.size();
@@ -228,7 +228,7 @@ void tAgent::showPhenotype(void){
 	cout<<"------"<<endl;
 }
 
-void tAgent::saveToDot(char *filename){
+void tAgent::saveToDot(const char *filename){
 	FILE *f=fopen(filename,"w+t");
 	size_t i,j,k;
 	fprintf(f,"digraph brain {\n");
@@ -254,7 +254,7 @@ void tAgent::saveToDot(char *filename){
 	fclose(f);
 }
 
-void tAgent::saveEdgeList(char *filename){
+void tAgent::saveEdgeList(const char *filename){
 	FILE *f=fopen(filename,"w+t");
 	size_t i,j,k;
 	for(i=0;i<hmmus.size();i++){
@@ -266,7 +266,7 @@ void tAgent::saveEdgeList(char *filename){
 	fclose(f);
 }
 
-void tAgent::saveToDotFullLayout(char *filename){
+void tAgent::saveToDotFullLayout(const char *filename){
 	FILE *f=fopen(filename,"w+t");
 	size_t i,j,k;
 	fprintf(f,"digraph brain {\n");

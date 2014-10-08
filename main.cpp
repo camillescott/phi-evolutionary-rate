@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
 	bool showhelp;
 	float preselectPhiLimit;
 	float evolvePhiLimit;
-	string filenameLOD, filenameGenome;
+	string filenameLOD, filenameGenome, filenameStartWith;
 
 	addp(TYPE::BOOL, &showhelp);
 	addp(TYPE::STRING, &filenameLOD, "--LOD", "filename to save Line of Descent.");
@@ -57,6 +57,7 @@ int main(int argc, char *argv[]) {
 	addp(TYPE::FLOAT, &preselectPhiLimit, "-1.0", false, "--preselectPhi", "phi threshold for brain selection before evolution. Define to enable.");
 	addp(TYPE::FLOAT, &evolvePhiLimit, "-1.0", false, "--evolvePhi", "phi threshold for brain selection during evolution before switching to task fitness. Define to enable.");
 	addp(TYPE::INT, &totalGenerations, "200", false, "--generations", "number of generations to simulate (updates).");
+	addp(TYPE::STRING, &filenameStartWith, "none", false, "--startwith", "specify a genome file used to seed the population.");
 	argparse(argv);
 	if (showhelp) {
 		cout << argdetails() << endl;
@@ -82,11 +83,18 @@ int main(int argc, char *argv[]) {
 	masterAgent->setupRandomAgent(5000);
 	
 	masterAgent->setupPhenotype();
-	//masterAgent->loadAgent("startGenome.txt");
 
-	for(i=0;i<agent.size();i++){
-		agent[i]=new tAgent;
-		agent[i]->inherit(masterAgent,0.5,0);
+	if (filenameStartWith != "none") {
+		masterAgent->loadAgent(filenameStartWith.c_str());
+		for(i=0;i<agent.size();i++){
+			agent[i]=new tAgent;
+			agent[i]->inherit(masterAgent,0.02,0); // small mutation rate to preserve genome
+		}
+	} else {
+		for(i=0;i<agent.size();i++){
+			agent[i]=new tAgent;
+			agent[i]->inherit(masterAgent,0.5,0); // large mutation rate to spread the genotypic population
+		}
 	}
 	nextGen.resize(agent.size());
 	masterAgent->nrPointingAtMe--;
