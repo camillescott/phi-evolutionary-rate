@@ -47,6 +47,7 @@ int main(int argc, char *argv[]) {
 	bool showhelp;
 	float preselectPhiLimit;
 	float evolvePhiLimit;
+	int evolvePhiGenLimit;
 	string filenameLOD, filenameGenome, filenameStartWith;
 
 	addp(TYPE::BOOL, &showhelp);
@@ -58,6 +59,7 @@ int main(int argc, char *argv[]) {
 	addp(TYPE::FLOAT, &evolvePhiLimit, "-1.0", false, "--evolvePhi", "phi threshold for brain selection during evolution before switching to task fitness. Define to enable.");
 	addp(TYPE::INT, &totalGenerations, "200", false, "--generations", "number of generations to simulate (updates).");
 	addp(TYPE::STRING, &filenameStartWith, "none", false, "--startwith", "specify a genome file used to seed the population.");
+	addp(TYPE::INT, &evolvePhiGenLimit, "-1", false, "--evolvePhiGen", "instead of evolving to a value of phi, number of generations.");
 	argparse(argv);
 	if (showhelp) {
 		cout << argdetails() << endl;
@@ -100,6 +102,7 @@ int main(int argc, char *argv[]) {
 	masterAgent->nrPointingAtMe--;
 	cout<<"setup complete"<<endl;
 	printf("%s	%s	%s	%s	%s	%s\n", "update","(double)maxFitness","maxPhi","agent[who]->phi","agent[who]->correct","agent[who]->incorrect");
+
 	while(update<totalGenerations){
 		//*
 		for(i=0;i<agent.size();i++){
@@ -122,6 +125,7 @@ int main(int argc, char *argv[]) {
 		double maxPhi=0.0;
 		bool evolvePhiPhase=false;
 		if (evolvePhiLimit > 0.0f) evolvePhiPhase=true;
+		if ((evolvePhiGenLimit != -1) && (update < evolvePhiGenLimit)) evolvePhiPhase = true;
 		
 		for(i=0;i<agent.size();i++){
 			agent[i]->fitness=agent[i]->fitnesses[0];
@@ -158,9 +162,6 @@ int main(int argc, char *argv[]) {
 				d->inherit(agent[j],perSiteMutationRate,update);
 				nextGen[i]=d;
 			}
-		}
-		if (maxPhi > evolvePhiLimit) {
-			evolvePhiPhase = false;
 		}
 		for(i=0;i<agent.size();i++){
 			agent[i]->retire();
