@@ -154,6 +154,7 @@ vector<vector<int> > tGame::executeGame(tAgent* agent,int paddleWidth,FILE *f,bo
 	RValue.push_back(dummyT0); // brain state
 
 	agent->phi=computeAtomicPhi(retValue[0], maxNodes);
+	agent->R=computeR(RValue,0);
 	agent->extra=1.0;
     return retValue;
 }

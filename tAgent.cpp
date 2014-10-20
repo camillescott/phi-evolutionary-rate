@@ -191,27 +191,27 @@ tAgent* tAgent::findLMRCA(void){
 }
 
 void tAgent::saveFromLMRCAtoNULL(FILE *statsFile,FILE *genomeFile){
-	if(ancestor!=NULL)
-		ancestor->saveFromLMRCAtoNULL(statsFile,genomeFile);
-	if(!saved){ 
-		fprintf(statsFile,"%i	%i	%i	%f	%i	%f	%i	%i\n",ID,born,(int)genome.size(),fitness,bestSteps,(float)totalSteps/(float)nrOfOffspring,correct,incorrect);
-		fprintf(genomeFile,"%i	",ID);
-		for(size_t i=0;i<genome.size();i++)
-			fprintf(genomeFile,"	%i",genome[i]);
-		fprintf(genomeFile,"\n");
-		saved=true;
-	}
-	if((saved)&&(retired)) genome.clear();
+	//if(ancestor!=NULL)
+	//	ancestor->saveFromLMRCAtoNULL(statsFile,genomeFile);
+	//if(!saved){ 
+	//	saveLOD(statsFile,"%i	%i	%i	%f	%i	%f	%i	%i\n",ID,born,(int)genome.size(),fitness,bestSteps,(float)totalSteps/(float)nrOfOffspring,correct,incorrect);
+	//	fprintf(genomeFile,"%i	",ID);
+	//	for(size_t i=0;i<genome.size();i++)
+	//		fprintf(genomeFile,"	%i",genome[i]);
+	//	fprintf(genomeFile,"\n");
+	//	saved=true;
+	//}
+	//if((saved)&&(retired)) genome.clear();
 }
 void tAgent::saveLOD(FILE *statsFile,FILE *genomeFile, string experimentID, int replicateID, int progenitorDOB){
 	if (progenitorDOB==-1) { // we always pass -1 when invoking from main
-		fprintf(statsFile,"%s	%s	%s	%s	%s	%s	%s	%s\n","DOB","genome_size","fitness","correct","incorrect","phi","experimentID","replicateID");
+		fprintf(statsFile,"%s	%s	%s	%s	%s	%s	%s %s	%s\n","DOB","genome_size","fitness","correct","incorrect","phi","r","experimentID","replicateID");
 	}
 	if(ancestor!=NULL) {
 		ancestor->saveLOD(statsFile,genomeFile, experimentID, replicateID, born);
 	} 
 	for (int i=born; i<progenitorDOB; ++i) {
-		fprintf(statsFile,"%i	%i	%f	%i	%i	%f	%s	%i\n",born,(int)genome.size(),fitness,correct,incorrect,phi,experimentID.c_str(),replicateID);
+		fprintf(statsFile,"%i	%i	%f	%i	%i	%f	%f	%s	%i\n",born,(int)genome.size(),fitness,correct,incorrect,phi,R,experimentID.c_str(),replicateID);
 	}
 	if(false){
 		fprintf(genomeFile,"%i	",ID);

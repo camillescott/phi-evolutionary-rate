@@ -48,6 +48,8 @@ int main(int argc, char *argv[]) {
 	float preselectPhiLimit;
 	float evolvePhiLimit;
 	int evolvePhiGenLimit;
+	float evolveRLimit;
+	int evolveRGenLimit;
 	string filenameLOD, filenameGenome, filenameStartWith;
 
 	addp(TYPE::BOOL, &showhelp);
@@ -60,6 +62,8 @@ int main(int argc, char *argv[]) {
 	addp(TYPE::INT, &totalGenerations, "200", false, "--generations", "number of generations to simulate (updates).");
 	addp(TYPE::STRING, &filenameStartWith, "none", false, "--startwith", "specify a genome file used to seed the population.");
 	addp(TYPE::INT, &evolvePhiGenLimit, "-1", false, "--evolvePhiGen", "instead of evolving to a value of phi, number of generations.");
+	addp(TYPE::FLOAT, &evolveRLimit, "-1.0", false, "--evolveR", "R threshold for brain selection during evolution before switching to task fitness. Define to enable.");
+	addp(TYPE::INT, &evolveRGenLimit, "-1", false, "--evolveRGen", "instead of evolving to a vlue of R, number of generations.");
 	argparse(argv);
 	if (showhelp) {
 		cout << argdetails() << endl;
@@ -101,12 +105,12 @@ int main(int argc, char *argv[]) {
 	nextGen.resize(agent.size());
 	masterAgent->nrPointingAtMe--;
 	cout<<"setup complete"<<endl;
-	printf("%s	%s	%s	%s	%s	%s\n", "update","(double)maxFitness","maxPhi","agent[who]->phi","agent[who]->correct","agent[who]->incorrect");
+	printf("%s	%s	%s	%s	%s	%s %s\n", "update","(double)maxFitness","maxPhi","r","agent[who]->phi","agent[who]->correct","agent[who]->incorrect");
 
 	while(update<totalGenerations){
 		//*
 		for(i=0;i<agent.size();i++){
-			agent[i]->fitness=1.0;
+			agent[i]->fitness=0.0;
 			agent[i]->phitness=0.0;
 			agent[i]->fitnesses.clear();
 		}
@@ -123,33 +127,51 @@ int main(int argc, char *argv[]) {
 		}
 		maxFitness=0.0;
 		double maxPhi=0.0;
+		double maxR=0.0;
 		bool evolvePhiPhase=false;
-		if (evolvePhiLimit > 0.0f) evolvePhiPhase=true;
-		if ((evolvePhiGenLimit != -1) && (update < evolvePhiGenLimit)) evolvePhiPhase = true;
+		bool evolvingR = false;
 		
 		for(i=0;i<agent.size();i++){
 			agent[i]->fitness=agent[i]->fitnesses[0];
-			//agent[i]->fitness=agent[i]->phitness;
 			if(agent[i]->fitness>maxFitness)
 				maxFitness=agent[i]->fitness;
-			if(pow(agent[i]->phi,2)>maxPhi)
-				maxPhi=pow(agent[i]->phi,2);
+			if(pow(1.1,50*agent[i]->phi)>maxPhi)
+				maxPhi=pow(1.1,50*agent[i]->phi);
+			if (pow(1.1,50*agent[i]->R)>maxR)
+				maxR=pow(1.1,50*agent[i]->R);
 		}
-        //if((update&31)==0)
-		  printf("%i	%f	%f	%f	%i	%i\n", update, (double)maxFitness, sqrt(maxPhi), agent[who]->phi, agent[who]->correct, agent[who]->incorrect);
+		if (evolvePhiLimit > 0.0f) evolvePhiPhase=true;
+		if ((evolvePhiGenLimit != -1) && (update < evolvePhiGenLimit)) evolvePhiPhase = true;
+		if (evolveRLimit > 0.0f) evolvingR = true;
+		if ((evolveRGenLimit > 0) && (update < evolveRGenLimit)) evolvingR = true;
+		  printf("%i	%f	%f	%f	%i	%i\n", update, (double)maxFitness, (log10(maxPhi)/log(1.1))/50, (log10(maxR)/log(1.1))/50, agent[who]->correct, agent[who]->incorrect);
 
-		if (evolvePhiPhase) {
+		if (evolvePhiPhase || evolvingR) {
 			for(i=0;i<agent.size();i++)
 			{
 				tAgent *d;
 				d=new tAgent;
+				float selectedValue=0.0f;
+				float maxValue=0.0f;
 				if(maxFitness<=0.0){
 					j=rand()%(int)agent.size();
-				} else
-				do{ j=rand()%(int)agent.size(); } while((j==i)||(randDouble>(pow(agent[j]->phi,2)/maxPhi)));
+				} else {
+					do{
+						j=rand()%(int)agent.size();
+						if (evolvingR) {
+							selectedValue = agent[j]->R;
+							maxValue = maxR;
+						} else {
+							selectedValue = agent[j]->phi;
+							maxValue = maxPhi;
+						}
+					} while((j==i)||(randDouble>(pow(1.1,50*selectedValue)/maxValue)));
+				}
 				d->inherit(agent[j],perSiteMutationRate,update);
 				nextGen[i]=d;
 			}
+			if ((log10(maxPhi)/log(1.1))/50 > evolvePhiLimit) evolvePhiLimit = -1.0f;
+			if ((log10(maxR)/log(1.1))/50 > evolveRLimit) evolveRLimit = -1.0f;
 		} else {
 			for(i=0;i<agent.size();i++)
 			{
