@@ -205,7 +205,7 @@ void tAgent::saveFromLMRCAtoNULL(FILE *statsFile,FILE *genomeFile){
 }
 void tAgent::saveLOD(FILE *statsFile,FILE *genomeFile, string experimentID, int replicateID, int progenitorDOB){
 	if (progenitorDOB==-1) { // we always pass -1 when invoking from main
-		fprintf(statsFile,"%s	%s	%s	%s	%s	%s	%s %s	%s\n","DOB","genome_size","fitness","correct","incorrect","phi","r","experimentID","replicateID");
+		fprintf(statsFile,"%s	%s	%s	%s	%s	%s	%s	%s	%s\n","DOB","genome_size","fitness","correct","incorrect","phi","r","experimentID","replicateID");
 	}
 	if(ancestor!=NULL) {
 		ancestor->saveLOD(statsFile,genomeFile, experimentID, replicateID, born);
