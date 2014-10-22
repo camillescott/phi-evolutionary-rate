@@ -6,6 +6,8 @@
 #include <math.h>
 #include <time.h>
 #include <iostream>
+#include <thread>
+#include <functional> // for ref
 #include "globalConst.h"
 #include "tHMM.h"
 #include "tAgent.h"
@@ -28,22 +30,72 @@ int update=0;
 size_t repeats=1;
 int maxAgent=100;
 int totalGenerations=200;
+const int mp=2;
 
 void computeLOD(FILE *f,FILE *g, tAgent *agent,tGame *game);
 const char* cstr(string s) { return s.c_str(); }
+
+void threadedExecuteGame(int chunkBegin, int chunkEnd, const vector<tAgent*>& agent, tGame * const game) {
+	for (int i=chunkEnd-chunkBegin-1; i>=0; --i) {
+		game->executeGame(agent[chunkBegin+i], 2, nullptr, true, -1, -1);
+		agent[chunkBegin+i]->fitnesses.push_back(agent[chunkBegin+i]->fitness);
+	}
+}
+
+void threadedSpecialSelection(int chunkBegin, int chunkEnd, const vector<tAgent*>& agent, vector<tAgent*>& nextGen, const bool& evolvingR, const float& maxPhi, const float& maxR) {
+	int j=0;
+	for (int i=chunkEnd-chunkBegin-1; i>=0; --i) {
+		tAgent *d;
+		d=new tAgent;
+		float selectedValue=0.0f;
+		float maxValue=0.0f;
+		if (evolvingR) maxValue = maxR;
+		else maxValue = maxPhi;
+		if(maxValue<=0.0){
+			j=rand()%(int)agent.size();
+		} else {
+			do{
+				j=rand()%(int)agent.size();
+				if (evolvingR) {
+					selectedValue = agent[j]->R;
+					maxValue = maxR;
+				} else {
+					selectedValue = agent[j]->phi;
+					maxValue = maxPhi;
+				}
+			} while((j==(chunkBegin+i))||(randDouble>(pow(1.1,mp*selectedValue)/maxValue)));
+		}
+		d->inherit(agent[j],perSiteMutationRate,update);
+		nextGen[chunkBegin+i]=d;
+	}
+}
+
+void threadedSelection(int chunkBegin, int chunkEnd, const vector<tAgent*>& agent, vector<tAgent*>& nextGen, const float& maxFitness) {
+	int j;
+	tAgent *d=nullptr;
+	for (int i=chunkEnd-chunkBegin-1; i>=0; --i) {
+		d=new tAgent;
+		if(maxFitness<=0.0){
+			j=rand()%(int)agent.size();
+		} else
+			do{ j=rand()%(int)agent.size(); } while((j==(chunkBegin+i))||(randDouble>(agent[j]->fitness/maxFitness)));
+		d->inherit(agent[j],perSiteMutationRate,update);
+		nextGen[chunkBegin+i]=d;
+	}
+}
 
 int main(int argc, char *argv[]) {
 	string experimentID;
 	int replicateID=0;
 	vector<tAgent*>agent;
 	vector<tAgent*>nextGen;
-	tAgent *masterAgent;
 	int who=0;
 	size_t i, j;
-	tGame *game;
 	double maxFitness;
-	FILE *LODFile;
-	FILE *genomeFile;
+	tAgent *masterAgent=nullptr;
+	tGame *game=nullptr;
+	FILE *LODFile=nullptr;
+	FILE *genomeFile=nullptr;
 	bool showhelp;
 	float preselectPhiLimit;
 	float evolvePhiLimit;
@@ -51,6 +103,8 @@ int main(int argc, char *argv[]) {
 	float evolveRLimit;
 	int evolveRGenLimit;
 	string filenameLOD, filenameGenome, filenameStartWith;
+	int nthreads=1;
+	vector<thread> threads;
 
 	addp(TYPE::BOOL, &showhelp);
 	addp(TYPE::STRING, &filenameLOD, "--LOD", "filename to save Line of Descent.");
@@ -69,23 +123,19 @@ int main(int argc, char *argv[]) {
 		cout << argdetails() << endl;
 		exit(0);
 	}
+	nthreads=thread::hardware_concurrency(); // get number of processors available
+	printf("%i processors available\n", nthreads);
 
     srand(getpid());
-    masterAgent=new tAgent;
-	/*LODFile=fopen(cstr(filenameLOD),"r+t");
-	if(LODFile!=NULL){
-		fclose(LODFile);
-		exit(0);
-	}*/
+    masterAgent=new tAgent();
 
 	LODFile=fopen(cstr(filenameLOD),"w+t");
 	genomeFile=fopen(cstr(filenameGenome),"w+t");	
 	srand(getpid());
 	agent.resize(maxAgent);
-    masterAgent=new tAgent;
-    vector<vector<int> > data;
-	game=new tGame;
 	masterAgent=new tAgent;
+	vector<vector<int> > data;
+	game=new tGame;
 	masterAgent->setupRandomAgent(5000);
 	
 	masterAgent->setupPhenotype();
@@ -108,23 +158,21 @@ int main(int argc, char *argv[]) {
 	printf("%s	%s	%s	%s	%s	%s %s\n", "update","(double)maxFitness","maxPhi","r","agent[who]->phi","agent[who]->correct","agent[who]->incorrect");
 
 	while(update<totalGenerations){
-		//*
 		for(i=0;i<agent.size();i++){
 			agent[i]->fitness=0.0;
 			agent[i]->phitness=0.0;
 			agent[i]->fitnesses.clear();
 		}
-		for(i=0;i<agent.size();i++){
-			for(j=0;j<repeats;j++){
-				game->executeGame(agent[i], 2, NULL, true, -1, -1);
-				//agent[i]->fitness*=agent[i]->fitness;
-				//agent[i]->fitness+=1.0;
-				agent[i]->fitnesses.push_back(agent[i]->fitness);
-				/*agent[i]->fitness*=(1.0+agent[i]->phi);*/
-				//agent[i]->phitness+=(agent[i]->phi / (double)repeats);
-				//agent[i]->fitnesses.push_back(agent[i]->phi);
-			}
+
+		threads.clear();
+		for (int agent_idx=agent.size()/nthreads - 1; agent_idx>=0; --agent_idx) { // outsource chunks to worker threads
+			threads.push_back(move(thread(threadedExecuteGame, agent_idx*nthreads, agent_idx*nthreads+nthreads, ref(agent), ref(game))));
 		}
+		if ((agent.size()%nthreads) != 0) { // perform remainder on the main thread
+			threadedExecuteGame(agent.size() - (agent.size()%nthreads), agent.size(), ref(agent), ref(game));
+		}
+		for (thread& t : threads) t.join(); // sync threads
+
 		maxFitness=0.0;
 		double maxPhi=0.0;
 		double maxR=0.0;
@@ -135,44 +183,38 @@ int main(int argc, char *argv[]) {
 			agent[i]->fitness=agent[i]->fitnesses[0];
 			if(agent[i]->fitness>maxFitness)
 				maxFitness=agent[i]->fitness;
-			if(pow(1.1,50*agent[i]->phi)>maxPhi)
-				maxPhi=pow(1.1,50*agent[i]->phi);
-			if (pow(1.1,50*agent[i]->R)>maxR)
-				maxR=pow(1.1,50*agent[i]->R);
+			if(pow(1.1,mp*agent[i]->phi)>maxPhi)
+				maxPhi=pow(1.1,mp*agent[i]->phi);
+			if (pow(1.1,mp*agent[i]->R)>maxR)
+				maxR=pow(1.1,mp*agent[i]->R);
 		}
 		if (evolvePhiLimit > 0.0f) evolvePhiPhase=true;
 		if ((evolvePhiGenLimit != -1) && (update < evolvePhiGenLimit)) evolvePhiPhase = true;
 		if (evolveRLimit > 0.0f) evolvingR = true;
 		if ((evolveRGenLimit > 0) && (update < evolveRGenLimit)) evolvingR = true;
-		  printf("%i	%f	%f	%f	%i	%i\n", update, (double)maxFitness, (log10(maxPhi)/log(1.1))/50, (log10(maxR)/log(1.1))/50, agent[who]->correct, agent[who]->incorrect);
+		  printf("%i	%f	%f	%f	%i	%i\n", update, (double)maxFitness, (log10(maxPhi)/log10(1.1))/mp, (log10(maxR)/log10(1.1))/mp, agent[who]->correct, agent[who]->incorrect);
 
 		if (evolvePhiPhase || evolvingR) {
-			for(i=0;i<agent.size();i++)
-			{
-				tAgent *d;
-				d=new tAgent;
-				float selectedValue=0.0f;
-				float maxValue=0.0f;
-				if(maxFitness<=0.0){
-					j=rand()%(int)agent.size();
-				} else {
-					do{
-						j=rand()%(int)agent.size();
-						if (evolvingR) {
-							selectedValue = agent[j]->R;
-							maxValue = maxR;
-						} else {
-							selectedValue = agent[j]->phi;
-							maxValue = maxPhi;
-						}
-					} while((j==i)||(randDouble>(pow(1.1,50*selectedValue)/maxValue)));
-				}
-				d->inherit(agent[j],perSiteMutationRate,update);
-				nextGen[i]=d;
+			threads.clear();
+			for (int agent_idx=agent.size()/nthreads-1; agent_idx>=0; --agent_idx) {
+				threads.push_back(move(thread(threadedSpecialSelection, agent_idx*nthreads, agent_idx*nthreads+nthreads, ref(agent), ref(nextGen), evolvingR, maxPhi, maxR)));
 			}
-			if ((log10(maxPhi)/log(1.1))/50 > evolvePhiLimit) evolvePhiLimit = -1.0f;
-			if ((log10(maxR)/log(1.1))/50 > evolveRLimit) evolveRLimit = -1.0f;
+			if ((agent.size()%nthreads) != 0) {
+				threadedSpecialSelection(agent.size() - (agent.size()%nthreads), agent.size(), ref(agent), ref(nextGen), evolvingR, maxPhi, maxR);
+			}
+			if ((log10(maxPhi)/log10(1.1))/mp > evolvePhiLimit) evolvePhiLimit = -1.0f;
+			if ((log10(maxR)/log10(1.1))/mp > evolveRLimit) evolveRLimit = -1.0f;
 		} else {
+
+			/// this breaks
+			//threads.clear();
+			//for (int agent_idx=agent.size()/nthreads - 1; agent_idx>=0; --agent_idx) {
+			//	threads.push_back(move(thread(threadedSelection, agent_idx*nthreads, agent_idx*nthreads+nthreads, ref(agent), ref(nextGen), maxFitness)));
+			//}
+			//if ((agent.size()%nthreads) != 0) {
+			//	threadedSelection(agent.size() - (agent.size()%nthreads), agent.size(), ref(agent), ref(nextGen), maxFitness);
+			//}
+			//for (thread& t : threads) t.join();
 			for(i=0;i<agent.size();i++)
 			{
 				tAgent *d;
@@ -199,7 +241,11 @@ int main(int argc, char *argv[]) {
 	agent[0]->ancestor->saveLOD(LODFile,genomeFile, experimentID, replicateID, -1); // -1 to tell saveLOD to make header for csv
 	agent[0]->ancestor->ancestor->saveGenome(genomeFile);
 //	agent[0]->ancestor->saveToDot(argv[3]);
-    return 0;
+	agent.clear();
+	nextGen.clear();
+	delete masterAgent;
+	delete game;
+	return 0;
 }
 
 void computeLOD(FILE *f,FILE *g, tAgent *agent,tGame *game){
