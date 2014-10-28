@@ -55,11 +55,12 @@ int main(int argc, char *argv[]) {
 	FILE *LODFile=nullptr;
 	FILE *genomeFile=nullptr;
 	bool showhelp;
-	float preselectPhiLimit;
 	float evolvePhiLimit;
 	int evolvePhiGenLimit;
 	float evolveRLimit;
 	int evolveRGenLimit;
+	bool stopOnLimit;
+	bool notStopping=true;
 	string filenameLOD, filenameGenome, filenameStartWith;
 	int nthreads=2;
 	vector<thread> threads;
@@ -69,13 +70,13 @@ int main(int argc, char *argv[]) {
 	addp(TYPE::STRING, &experimentID, "--experiment", "unique identifier for this experiment, shared by all replicates.");
 	addp(TYPE::INT, &replicateID, "--replicate", "unique number to identify this replicate in this experiment.");
 	addp(TYPE::STRING, &filenameGenome, "--genome", "filename to save genomes of the LODFile.");
-	addp(TYPE::FLOAT, &preselectPhiLimit, "-1.0", false, "--preselectPhi", "phi threshold for brain selection before evolution. Define to enable.");
 	addp(TYPE::FLOAT, &evolvePhiLimit, "-1.0", false, "--evolvePhi", "phi threshold for brain selection during evolution before switching to task fitness. Define to enable.");
 	addp(TYPE::INT, &totalGenerations, "200", false, "--generations", "number of generations to simulate (updates).");
 	addp(TYPE::STRING, &filenameStartWith, "none", false, "--startwith", "specify a genome file used to seed the population.");
 	addp(TYPE::INT, &evolvePhiGenLimit, "-1", false, "--evolvePhiGen", "instead of evolving to a value of phi, number of generations.");
 	addp(TYPE::FLOAT, &evolveRLimit, "-1.0", false, "--evolveR", "R threshold for brain selection during evolution before switching to task fitness. Define to enable.");
 	addp(TYPE::INT, &evolveRGenLimit, "-1", false, "--evolveRGen", "instead of evolving to a vlue of R, number of generations.");
+	addp(TYPE::BOOL, &stopOnLimit, "false", false, "--stopOnLimit", "if a limit is specified, then the simulation will stop at the limit.");
 	argparse(argv);
 	if (showhelp) {
 		cout << argdetails() << endl;
@@ -113,7 +114,7 @@ int main(int argc, char *argv[]) {
 	cout<<"setup complete"<<endl;
 	printf("%s	%s	%s	%s	%s	%s %s\n", "update","(double)maxFitness","maxPhi","r","agent[who]->phi","agent[who]->correct","agent[who]->incorrect");
 
-	while(update<totalGenerations){
+	while(update<totalGenerations && notStopping){
 		for(i=0;i<agent.size();i++){
 			agent[i]->fitness=0.0;
 			agent[i]->phitness=0.0;
@@ -174,8 +175,22 @@ int main(int argc, char *argv[]) {
 				d->inherit(agent[j],perSiteMutationRate,update);
 				nextGen[i]=d;
 			}
-			if ((log10(maxPhi)/log10(1.1))/mp > evolvePhiLimit) evolvePhiLimit = -1.0f;
-			if ((log10(maxR)/log10(1.1))/mp > evolveRLimit) evolveRLimit = -1.0f;
+			if ((log10(maxPhi)/log10(1.1))/mp > evolvePhiLimit) {
+				if (evolvePhiLimit > 0) {
+					evolvePhiLimit = -1.0f;
+					if (stopOnLimit) {
+						notStopping = false;
+					}
+				}
+			}
+			if ((log10(maxR)/log10(1.1))/mp > evolveRLimit) {
+				if (evolveRLimit > 0) {
+					evolveRLimit = -1.0f;
+					if (stopOnLimit) {
+						notStopping = false;
+					}
+				}
+			}
 		} else {
 			for(i=0;i<agent.size();i++)
 			{
