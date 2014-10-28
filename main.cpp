@@ -70,11 +70,11 @@ int main(int argc, char *argv[]) {
 	addp(TYPE::STRING, &experimentID, "--experiment", "unique identifier for this experiment, shared by all replicates.");
 	addp(TYPE::INT, &replicateID, "--replicate", "unique number to identify this replicate in this experiment.");
 	addp(TYPE::STRING, &filenameGenome, "--genome", "filename to save genomes of the LODFile.");
-	addp(TYPE::FLOAT, &evolvePhiLimit, "-1.0", false, "--evolvePhi", "phi threshold for brain selection during evolution before switching to task fitness. Define to enable.");
+	addp(TYPE::FLOAT, &evolvePhiLimit, "-1.0", false, "--evolvePhiLimit", "phi threshold for brain selection during evolution before switching to task fitness. Define to enable.");
 	addp(TYPE::INT, &totalGenerations, "200", false, "--generations", "number of generations to simulate (updates).");
 	addp(TYPE::STRING, &filenameStartWith, "none", false, "--startwith", "specify a genome file used to seed the population.");
 	addp(TYPE::INT, &evolvePhiGenLimit, "-1", false, "--evolvePhiGen", "instead of evolving to a value of phi, number of generations.");
-	addp(TYPE::FLOAT, &evolveRLimit, "-1.0", false, "--evolveR", "R threshold for brain selection during evolution before switching to task fitness. Define to enable.");
+	addp(TYPE::FLOAT, &evolveRLimit, "-1.0", false, "--evolveRLimit", "R threshold for brain selection during evolution before switching to task fitness. Define to enable.");
 	addp(TYPE::INT, &evolveRGenLimit, "-1", false, "--evolveRGen", "instead of evolving to a vlue of R, number of generations.");
 	addp(TYPE::BOOL, &stopOnLimit, "false", false, "--stopOnLimit", "if a limit is specified, then the simulation will stop at the limit.");
 	argparse(argv);
