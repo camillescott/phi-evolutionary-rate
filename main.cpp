@@ -35,52 +35,10 @@ const int mp=2;
 void computeLOD(FILE *f,FILE *g, tAgent *agent,tGame *game);
 const char* cstr(string s) { return s.c_str(); }
 
-void threadedExecuteGame(int chunkBegin, int chunkEnd, const vector<tAgent*>& agent, tGame * const game) {
+void threadedExecuteGame(int chunkBegin, int chunkEnd, const vector<tAgent*>& agent, tGame& game) {
 	for (int i=chunkEnd-chunkBegin-1; i>=0; --i) {
-		game->executeGame(agent[chunkBegin+i], 2, nullptr, true, -1, -1);
+		game.executeGame(agent[chunkBegin+i], 2, nullptr, true, -1, -1);
 		agent[chunkBegin+i]->fitnesses.push_back(agent[chunkBegin+i]->fitness);
-	}
-}
-
-void threadedSpecialSelection(int chunkBegin, int chunkEnd, const vector<tAgent*>& agent, vector<tAgent*>& nextGen, const bool& evolvingR, const float& maxPhi, const float& maxR) {
-	int j=0;
-	for (int i=chunkEnd-chunkBegin-1; i>=0; --i) {
-		tAgent *d;
-		d=new tAgent;
-		float selectedValue=0.0f;
-		float maxValue=0.0f;
-		if (evolvingR) maxValue = maxR;
-		else maxValue = maxPhi;
-		if(maxValue<=0.0){
-			j=rand()%(int)agent.size();
-		} else {
-			do{
-				j=rand()%(int)agent.size();
-				if (evolvingR) {
-					selectedValue = agent[j]->R;
-					maxValue = maxR;
-				} else {
-					selectedValue = agent[j]->phi;
-					maxValue = maxPhi;
-				}
-			} while((j==(chunkBegin+i))||(randDouble>(pow(1.1,mp*selectedValue)/maxValue)));
-		}
-		d->inherit(agent[j],perSiteMutationRate,update);
-		nextGen[chunkBegin+i]=d;
-	}
-}
-
-void threadedSelection(int chunkBegin, int chunkEnd, const vector<tAgent*>& agent, vector<tAgent*>& nextGen, const float& maxFitness) {
-	int j;
-	tAgent *d=nullptr;
-	for (int i=chunkEnd-chunkBegin-1; i>=0; --i) {
-		d=new tAgent;
-		if(maxFitness<=0.0){
-			j=rand()%(int)agent.size();
-		} else
-			do{ j=rand()%(int)agent.size(); } while((j==(chunkBegin+i))||(randDouble>(agent[j]->fitness/maxFitness)));
-		d->inherit(agent[j],perSiteMutationRate,update);
-		nextGen[chunkBegin+i]=d;
 	}
 }
 
@@ -103,7 +61,7 @@ int main(int argc, char *argv[]) {
 	float evolveRLimit;
 	int evolveRGenLimit;
 	string filenameLOD, filenameGenome, filenameStartWith;
-	int nthreads=1;
+	int nthreads=2;
 	vector<thread> threads;
 
 	addp(TYPE::BOOL, &showhelp);
@@ -123,8 +81,6 @@ int main(int argc, char *argv[]) {
 		cout << argdetails() << endl;
 		exit(0);
 	}
-	nthreads=thread::hardware_concurrency(); // get number of processors available
-	printf("%i processors available\n", nthreads);
 
     srand(getpid());
     masterAgent=new tAgent();
@@ -165,12 +121,9 @@ int main(int argc, char *argv[]) {
 		}
 
 		threads.clear();
-		for (int agent_idx=agent.size()/nthreads - 1; agent_idx>=0; --agent_idx) { // outsource chunks to worker threads
-			threads.push_back(move(thread(threadedExecuteGame, agent_idx*nthreads, agent_idx*nthreads+nthreads, ref(agent), ref(game))));
-		}
-		if ((agent.size()%nthreads) != 0) { // perform remainder on the main thread
-			threadedExecuteGame(agent.size() - (agent.size()%nthreads), agent.size(), ref(agent), ref(game));
-		}
+		int chunksize=agent.size()/2;
+		threads.push_back(thread(threadedExecuteGame, 0, chunksize, ref(agent), ref(*game)));
+		threadedExecuteGame(chunksize, agent.size(), ref(agent), ref(*game));
 		for (thread& t : threads) t.join(); // sync threads
 
 		maxFitness=0.0;
@@ -194,27 +147,36 @@ int main(int argc, char *argv[]) {
 		if ((evolveRGenLimit > 0) && (update < evolveRGenLimit)) evolvingR = true;
 		  printf("%i	%f	%f	%f	%i	%i\n", update, (double)maxFitness, (log10(maxPhi)/log10(1.1))/mp, (log10(maxR)/log10(1.1))/mp, agent[who]->correct, agent[who]->incorrect);
 
+		  threads.clear();
 		if (evolvePhiPhase || evolvingR) {
-			threads.clear();
-			for (int agent_idx=agent.size()/nthreads-1; agent_idx>=0; --agent_idx) {
-				threads.push_back(move(thread(threadedSpecialSelection, agent_idx*nthreads, agent_idx*nthreads+nthreads, ref(agent), ref(nextGen), evolvingR, maxPhi, maxR)));
-			}
-			if ((agent.size()%nthreads) != 0) {
-				threadedSpecialSelection(agent.size() - (agent.size()%nthreads), agent.size(), ref(agent), ref(nextGen), evolvingR, maxPhi, maxR);
+			int j=0;
+			for(i=0;i<agent.size();i++) {
+				tAgent *d;
+				d=new tAgent;
+				float selectedValue=0.0f;
+				float maxValue=0.0f;
+				if (evolvingR) maxValue = maxR;
+				else maxValue = maxPhi;
+				if(maxValue<=0.0){
+					j=rand()%(int)agent.size();
+				} else {
+					do{
+						j=rand()%(int)agent.size();
+						if (evolvingR) {
+							selectedValue = agent[j]->R;
+							maxValue = maxR;
+						} else {
+							selectedValue = agent[j]->phi;
+							maxValue = maxPhi;
+						}
+					} while((j==(i))||(randDouble>(pow(1.1,mp*selectedValue)/maxValue)));
+				}
+				d->inherit(agent[j],perSiteMutationRate,update);
+				nextGen[i]=d;
 			}
 			if ((log10(maxPhi)/log10(1.1))/mp > evolvePhiLimit) evolvePhiLimit = -1.0f;
 			if ((log10(maxR)/log10(1.1))/mp > evolveRLimit) evolveRLimit = -1.0f;
 		} else {
-
-			/// this breaks
-			//threads.clear();
-			//for (int agent_idx=agent.size()/nthreads - 1; agent_idx>=0; --agent_idx) {
-			//	threads.push_back(move(thread(threadedSelection, agent_idx*nthreads, agent_idx*nthreads+nthreads, ref(agent), ref(nextGen), maxFitness)));
-			//}
-			//if ((agent.size()%nthreads) != 0) {
-			//	threadedSelection(agent.size() - (agent.size()%nthreads), agent.size(), ref(agent), ref(nextGen), maxFitness);
-			//}
-			//for (thread& t : threads) t.join();
 			for(i=0;i<agent.size();i++)
 			{
 				tAgent *d;
