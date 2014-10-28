@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
 		masterAgent->loadAgent(filenameStartWith.c_str());
 		for(i=0;i<agent.size();i++){
 			agent[i]=new tAgent;
-			agent[i]->inherit(masterAgent,0.02,0); // small mutation rate to preserve genome
+			agent[i]->inherit(masterAgent,0.0,0); // small mutation rate to preserve genome
 		}
 	} else {
 		for(i=0;i<agent.size();i++){
