@@ -60,7 +60,6 @@ int main(int argc, char *argv[]) {
 	float evolveRLimit;
 	int evolveRGenLimit;
 	bool stopOnLimit;
-	bool notStopping=true;
 	string filenameLOD, filenameGenome, filenameStartWith;
 	int nthreads=2;
 	vector<thread> threads;
@@ -114,7 +113,7 @@ int main(int argc, char *argv[]) {
 	cout<<"setup complete"<<endl;
 	printf("%s	%s	%s	%s	%s	%s %s\n", "update","(double)maxFitness","maxPhi","r","agent[who]->phi","agent[who]->correct","agent[who]->incorrect");
 
-	while(update<totalGenerations && notStopping){
+	while(update<totalGenerations){
 		for(i=0;i<agent.size();i++){
 			agent[i]->fitness=0.0;
 			agent[i]->phitness=0.0;
@@ -179,7 +178,7 @@ int main(int argc, char *argv[]) {
 				if (evolvePhiLimit > 0) {
 					evolvePhiLimit = -1.0f;
 					if (stopOnLimit) {
-						notStopping = false;
+						break;
 					}
 				}
 			}
@@ -187,7 +186,7 @@ int main(int argc, char *argv[]) {
 				if (evolveRLimit > 0) {
 					evolveRLimit = -1.0f;
 					if (stopOnLimit) {
-						notStopping = false;
+						break;
 					}
 				}
 			}
@@ -216,7 +215,21 @@ int main(int argc, char *argv[]) {
 	}
 	
 	agent[0]->ancestor->saveLOD(LODFile,genomeFile, experimentID, replicateID, -1); // -1 to tell saveLOD to make header for csv
-	agent[0]->ancestor->ancestor->saveGenome(genomeFile);
+	if (stopOnLimit) {
+		float maxPhi=0.0;
+		tAgent* bestAgent=nullptr;
+		for (tAgent* a : agent) {
+			if (a->phi > maxPhi) {
+				maxPhi = a->phi;
+				bestAgent = a;
+			}
+		}
+		if (bestAgent) {
+			bestAgent->saveGenome(genomeFile);
+		}
+	} else {
+		agent[0]->ancestor->ancestor->saveGenome(genomeFile);
+	}
 //	agent[0]->ancestor->saveToDot(argv[3]);
 	agent.clear();
 	nextGen.clear();
