@@ -134,8 +134,10 @@ int main(int argc, char *argv[]) {
 		
 		for(i=0;i<agent.size();i++){
 			agent[i]->fitness=agent[i]->fitnesses[0];
-			if(agent[i]->fitness>maxFitness)
+			if(agent[i]->fitness>maxFitness) {
 				maxFitness=agent[i]->fitness;
+				who=i;
+			}
 			if(pow(1.1,mp*agent[i]->phi)>maxPhi)
 				maxPhi=pow(1.1,mp*agent[i]->phi);
 			if (pow(1.1,mp*agent[i]->R)>maxR)
