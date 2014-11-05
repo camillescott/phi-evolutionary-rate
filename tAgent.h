@@ -67,7 +67,7 @@ public:
 	void showPhenotype(void);
 	void saveToDot(const char *filename);
 	void saveToDotFullLayout(const char *filename);
-    void saveEdgeList(const char *filename);
+   void saveEdgeList(const char *filename);
 	
 	void initialize(int x, int y, int d);
 	tAgent* findLMRCA(void);
