@@ -266,6 +266,57 @@ void tAgent::saveEdgeList(const char *filename){
 	fclose(f);
 }
 
+vector<vector<int> > tAgent::getBrainMap(void){
+    vector<vector<int> > M;
+    int i,j,k;
+    M.clear();
+    M.resize(brainSize);
+    for(i=0;i<brainSize;i++){
+        M[i].resize(brainSize);
+        for(j=0;j<brainSize;j++)
+            M[i][j]=0;
+    }
+	for(i=0;i<hmmus.size();i++){
+		for(j=0;j<hmmus[i]->ins.size();j++)
+            for(k=0;k<hmmus[i]->outs.size();k++)
+                M[hmmus[i]->ins[j]][hmmus[i]->outs[k]]=1;
+	}
+    return M;
+}
+
+vector<vector<int> > tAgent::getDistMap(vector<vector<int> > M){
+    vector<int> currentNodes,addNodes;
+    vector<vector<int> > dist;
+    int i,j,k;
+    int cD;
+    dist.clear();
+    dist.resize(brainSize);
+    for(i=0;i<brainSize;i++){
+        dist[i].resize(brainSize);
+        for(j=0;j<brainSize;j++)
+            dist[i][j]=0;
+    }
+    for(i=0;i<brainSize;i++){
+        currentNodes.clear();
+        addNodes.clear();
+        cD=2;
+        currentNodes.push_back(i);
+        dist[i][i]=1;
+        do{
+            for(j=0;j<currentNodes.size();j++)
+                for(k=0;k<brainSize;k++)
+                    if((dist[currentNodes[j]][k]==0)&&(M[currentNodes[j]][k]!=0)){
+                        dist[currentNodes[j]][k]=cD;
+                        addNodes.push_back(k);
+                    }
+            currentNodes=addNodes;
+            addNodes.clear();
+            cD++;
+        } while(currentNodes.size()!=0);
+    }
+    return dist;
+}
+
 void tAgent::saveToDotFullLayout(const char *filename){
 	FILE *f=fopen(filename,"w+t");
 	size_t i,j,k;

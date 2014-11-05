@@ -68,6 +68,8 @@ public:
 	void saveToDot(const char *filename);
 	void saveToDotFullLayout(const char *filename);
    void saveEdgeList(const char *filename);
+	vector<vector<int> > getBrainMap(void);
+	vector<vector<int> > getDistMap(vector<vector<int> > M);
 	
 	void initialize(int x, int y, int d);
 	tAgent* findLMRCA(void);
