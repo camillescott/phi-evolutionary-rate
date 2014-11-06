@@ -270,10 +270,10 @@ vector<vector<int> > tAgent::getBrainMap(void){
     vector<vector<int> > M;
     int i,j,k;
     M.clear();
-    M.resize(brainSize);
-    for(i=0;i<brainSize;i++){
-        M[i].resize(brainSize);
-        for(j=0;j<brainSize;j++)
+    M.resize(maxNodes);
+    for(i=0;i<maxNodes;i++){
+        M[i].resize(maxNodes);
+        for(j=0;j<maxNodes;j++)
             M[i][j]=0;
     }
 	for(i=0;i<hmmus.size();i++){
