@@ -285,35 +285,42 @@ vector<vector<int> > tAgent::getBrainMap(void){
 }
 
 vector<vector<int> > tAgent::getDistMap(vector<vector<int> > M){
-    vector<int> currentNodes,addNodes;
-    vector<vector<int> > dist;
-    int i,j,k;
-    int cD;
-    dist.clear();
-    dist.resize(brainSize);
-    for(i=0;i<brainSize;i++){
-        dist[i].resize(brainSize);
-        for(j=0;j<brainSize;j++)
-            dist[i][j]=0;
-    }
-    for(i=0;i<brainSize;i++){
-        currentNodes.clear();
-        addNodes.clear();
-        cD=2;
-        currentNodes.push_back(i);
-        dist[i][i]=1;
-        do{
-            for(j=0;j<currentNodes.size();j++)
-                for(k=0;k<brainSize;k++)
-                    if((dist[currentNodes[j]][k]==0)&&(M[currentNodes[j]][k]!=0)){
-                        dist[currentNodes[j]][k]=cD;
-                        addNodes.push_back(k);
-                    }
-            currentNodes=addNodes;
-            addNodes.clear();
-            cD++;
-        } while(currentNodes.size()!=0);
-    }
+	 int m[maxNodes][maxNodes] = {0};
+	 int cdist[maxNodes][maxNodes] = {0}; // current-distance adjacency matrix (for length n these are connected...)
+	 int cdistNew[maxNodes][maxNodes] = {0};
+    vector<vector<int>> dist(maxNodes, vector<int>(maxNodes, 0)); // create and init 2D to 0's
+    int h,i,j,k,sum,steps=1;
+	 bool newRecords=false;
+	 for (j=maxNodes-1; j>=0; --j) { /// initialize m and cdist arrays
+		 for (k=maxNodes-1; k>=0; --k) {
+			 m[j][k]=M[j][k];
+			 cdist[j][k]=M[j][k];
+		 }
+	 }
+    do {
+		 newRecords=false;
+		 for (j=maxNodes-1; j>=0; --j) {
+			 for (k=maxNodes-1; k>=0; --k) {
+				 if ((dist[j][k]==0) && (cdist[j][k]!=0)) {
+					 dist[j][k]=steps;
+					 newRecords=true;
+				 }
+			 }
+		 }
+		 for (j=maxNodes-1; j>=0; --j) { // dot original adjacency for new step analysis
+			 for (k=maxNodes-1; k>=0; --k) {
+				 sum=0;
+				 for (i=maxNodes-1; i>=0; --i) {
+					 sum |= m[j][i] & cdist[i][k];
+				 }
+				 cdistNew[j][k]=sum;
+			 }
+		 }
+		 for (j=maxNodes-1; j>=0; --j)
+			 for (k=maxNodes-1; k>=0; --k)
+				 cdist[j][k]=cdistNew[j][k];
+		 ++steps;
+    } while(newRecords);
     return dist;
 }
 
