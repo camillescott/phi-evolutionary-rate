@@ -59,6 +59,8 @@ int main(int argc, char *argv[]) {
 	int evolvePhiGenLimit;
 	float evolveRLimit;
 	int evolveRGenLimit;
+	float evolveTopologyLimit;
+	int evolveTopologyGenLimit;
 	bool stopOnLimit;
 	string filenameLOD, filenameGenome, filenameStartWith;
 	int nthreads=2;
@@ -75,6 +77,8 @@ int main(int argc, char *argv[]) {
 	addp(TYPE::INT, &evolvePhiGenLimit, "-1", false, "--evolvePhiGenLimit", "instead of evolving to a value of phi, number of generations.");
 	addp(TYPE::FLOAT, &evolveRLimit, "-1.0", false, "--evolveRLimit", "R threshold for brain selection during evolution before switching to task fitness. Define to enable.");
 	addp(TYPE::INT, &evolveRGenLimit, "-1", false, "--evolveRGenLimit", "instead of evolving to a vlue of R, number of generations.");
+	addp(TYPE::FLOAT, &evolveTopologyLimit, "-1.0", false, "--evolveTopologyLimit", "Topology (avg path length) threshold for brain selection during evolution before switching to task fitness. Define to enable.");
+	addp(TYPE::INT, &evolveTopologyGenLimit, "-1", false, "--evolveTopologyGenLimit", "instead of evolving to a value of Topology, number of generations.");
 	addp(TYPE::BOOL, &stopOnLimit, "false", false, "--stopOnLimit", "if a limit is specified, then the simulation will stop at the limit.");
 	argparse(argv);
 	if (showhelp) {
@@ -111,7 +115,7 @@ int main(int argc, char *argv[]) {
 	nextGen.resize(agent.size());
 	masterAgent->nrPointingAtMe--;
 	cout<<"setup complete"<<endl;
-	printf("%s	%s	%s	%s	%s	%s %s\n", "update","(double)maxFitness","maxPhi","r","agent[who]->phi","agent[who]->correct","agent[who]->incorrect");
+	printf("%s	%s	%s	%s	%s	%s	%s\n", "update","(double)maxFitness","maxPhi","r", "maxTopology", "agent[who]->correct","agent[who]->incorrect");
 
 	while(update<totalGenerations){
 		for(i=0;i<agent.size();i++){
@@ -129,8 +133,10 @@ int main(int argc, char *argv[]) {
 		maxFitness=0.0;
 		double maxPhi=0.0;
 		double maxR=0.0;
+		double maxTopology=0;
 		bool evolvePhiPhase=false;
 		bool evolvingR = false;
+		bool evolvingTopology = false;
 		
 		for(i=0;i<agent.size();i++){
 			agent[i]->fitness=agent[i]->fitnesses[0];
@@ -142,15 +148,19 @@ int main(int argc, char *argv[]) {
 				maxPhi=pow(1.1,mp*agent[i]->phi);
 			if (pow(1.1,mp*agent[i]->R)>maxR)
 				maxR=pow(1.1,mp*agent[i]->R);
+			if (pow(1.1,mp*agent[i]->Topology)>maxTopology)
+				maxTopology=pow(1.1,mp*agent[i]->Topology);
 		}
 		if (evolvePhiLimit > 0.0f) evolvePhiPhase=true;
 		if ((evolvePhiGenLimit != -1) && (update < evolvePhiGenLimit)) evolvePhiPhase = true;
 		if (evolveRLimit > 0.0f) evolvingR = true;
 		if ((evolveRGenLimit > 0) && (update < evolveRGenLimit)) evolvingR = true;
-		  printf("%i	%f	%f	%f	%i	%i\n", update, (double)maxFitness, (log10(maxPhi)/log10(1.1))/mp, (log10(maxR)/log10(1.1))/mp, agent[who]->correct, agent[who]->incorrect);
+		if (evolveTopologyLimit > 0) evolvingTopology = true;
+		if ((evolveTopologyGenLimit > 0) && (update < evolveTopologyGenLimit)) evolvingTopology = true;
+		  printf("%i	%f	%f	%f	%f	%i	%i\n", update, (double)maxFitness, (log10(maxPhi)/log10(1.1))/mp, (log10(maxR)/log10(1.1))/mp, (log10(maxTopology)/log10(1.1))/mp, agent[who]->correct, agent[who]->incorrect);
 
 		  threads.clear();
-		if (evolvePhiPhase || evolvingR) {
+		if (evolvePhiPhase || evolvingR || evolvingTopology) {
 			int j=0;
 			for(i=0;i<agent.size();i++) {
 				tAgent *d;
@@ -158,6 +168,7 @@ int main(int argc, char *argv[]) {
 				float selectedValue=0.0f;
 				float maxValue=0.0f;
 				if (evolvingR) maxValue = maxR;
+				else if (evolvingTopology) maxValue = maxTopology;
 				else maxValue = maxPhi;
 				if(maxValue<=0.0){
 					j=rand()%(int)agent.size();
@@ -167,9 +178,12 @@ int main(int argc, char *argv[]) {
 						if (evolvingR) {
 							selectedValue = agent[j]->R;
 							maxValue = maxR;
-						} else {
+						} else if (evolvePhiPhase) {
 							selectedValue = agent[j]->phi;
 							maxValue = maxPhi;
+						} else {
+							selectedValue = (float)agent[j]->Topology;
+							maxValue = (float)maxTopology;
 						}
 					} while((j==(i))||(randDouble>(pow(1.1,mp*selectedValue)/maxValue)));
 				}
@@ -187,6 +201,14 @@ int main(int argc, char *argv[]) {
 			if ((log10(maxR)/log10(1.1))/mp > evolveRLimit) {
 				if (evolveRLimit > 0) {
 					evolveRLimit = -1.0f;
+					if (stopOnLimit) {
+						break;
+					}
+				}
+			}
+			if ((log10(maxTopology)/log10(1.1))/mp > evolveTopologyLimit) {
+				if (evolveTopologyLimit > 0) {
+					evolveTopologyLimit = -1.0f;
 					if (stopOnLimit) {
 						break;
 					}

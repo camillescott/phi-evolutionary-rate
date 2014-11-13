@@ -8,6 +8,7 @@
 
 #include "tGame.h"
 #include <math.h>
+#include <numeric>
 
 
 
@@ -156,6 +157,14 @@ vector<vector<int> > tGame::executeGame(tAgent* agent,int paddleWidth,FILE *f,bo
 	agent->phi=computeAtomicPhi(retValue[0], maxNodes);
 	agent->R=computeR(RValue,0);
 	agent->extra=1.0;
+	vector<vector<int>> paths = agent->getDistMap(agent->getBrainMap());
+	int longestPath(0);
+	int sumPath(0);
+	for (auto& row : paths) {
+		sumPath=accumulate(begin(row), end(row), 0);
+		if (sumPath > longestPath) longestPath = sumPath;
+	}
+	agent->Topology = longestPath;
     return retValue;
 }
 
