@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
 	int evolveTopologyGenLimit;
 	bool stopOnLimit;
 	string filenameLOD, filenameGenome, filenameStartWith;
-	int nthreads=2;
+	int nthreads=1;
 	vector<thread> threads;
 
 	addp(TYPE::BOOL, &showhelp);
@@ -79,6 +79,7 @@ int main(int argc, char *argv[]) {
 	addp(TYPE::INT, &evolveRGenLimit, "-1", false, "--evolveRGenLimit", "instead of evolving to a vlue of R, number of generations.");
 	addp(TYPE::FLOAT, &evolveTopologyLimit, "-1.0", false, "--evolveTopologyLimit", "Topology (avg path length) threshold for brain selection during evolution before switching to task fitness. Define to enable.");
 	addp(TYPE::INT, &evolveTopologyGenLimit, "-1", false, "--evolveTopologyGenLimit", "instead of evolving to a value of Topology, number of generations.");
+	addp(TYPE::INT, &nthreads, "1", false, "--nthreads", "number of worker threads");
 	addp(TYPE::BOOL, &stopOnLimit, "false", false, "--stopOnLimit", "if a limit is specified, then the simulation will stop at the limit.");
 	argparse(argv);
 	if (showhelp) {
@@ -125,9 +126,12 @@ int main(int argc, char *argv[]) {
 		}
 
 		threads.clear();
-		int chunksize=agent.size()/2;
-		threads.push_back(thread(threadedExecuteGame, 0, chunksize, ref(agent), ref(*game)));
-		threadedExecuteGame(chunksize, agent.size(), ref(agent), ref(*game));
+		int chunksize=agent.size()/nthreads;
+        for (int i=0; i<nthreads; ++i) {
+		    threads.push_back(thread(threadedExecuteGame, i*chunksize, (i*chunksize)+chunksize,
+                ref(agent), ref(*game)));
+        }
+		//threadedExecuteGame(chunksize, agent.size(), ref(agent), ref(*game));
 		for (thread& t : threads) t.join(); // sync threads
 
 		maxFitness=0.0;
